@@ -3,31 +3,24 @@
  */
 
 /**
- * Vérifie si l'appareil et le navigateur prennent en charge WebXR
+ * Vérifie si l'appareil et le navigateur prennent en charge WebXR (mode AR)
+ * @returns Promise<boolean> - True si AR est supporté, false sinon
  */
-export const checkXRSupport = async (): Promise<{ar: boolean, vr: boolean}> => {
+export const checkXRSupport = async (): Promise<boolean> => {
     try {
-        const support = {
-            ar: false,
-            vr: false
-        };
-
         if ('xr' in navigator) {
             // Utilisation de any pour éviter les conflits de types
             const nav = navigator as any;
 
             if (nav.xr && typeof nav.xr.isSessionSupported === 'function') {
                 // Vérifier le support AR
-                support.ar = await nav.xr.isSessionSupported('immersive-ar');
-
-                // Vérifier le support VR
-                support.vr = await nav.xr.isSessionSupported('immersive-vr');
+                return await nav.xr.isSessionSupported('immersive-ar');
             }
         }
-        return support;
+        return false;
     } catch (error) {
         console.error("Erreur lors de la vérification de la prise en charge WebXR:", error);
-        return { ar: false, vr: false };
+        return false;
     }
 };
 
