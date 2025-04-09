@@ -1,14 +1,17 @@
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import SimplePortfolioItem from './SimplePortfolioItem';
 import { useXR } from './SimplifiedXR';
 
-// Utiliser le type personnalisé de global.d.ts
+// Composant simplifié sans les fonctionnalités avancées d'AR qui posent problème
 const SimplePortfolio3D = () => {
     // Compteur pour l'animation
     const [time, setTime] = useState(0);
     const { isPresenting } = useXR();
+
+    // Référence du groupe principal pour le positionnement AR
+    const groupRef = useRef(null);
 
     // Animation simple
     useFrame((state) => {
@@ -51,6 +54,48 @@ const SimplePortfolio3D = () => {
         }
     ];
 
+    // Mode AR vs mode test
+    if (isPresenting) {
+        // En mode AR, positionner les projets en cercle
+        return (
+            <group ref={groupRef} scale={[0.5, 0.5, 0.5]}>
+                {/* Texte d'introduction */}
+                <Text
+                    position={[0, 1.5, 0]}
+                    color="white"
+                    fontSize={0.2}
+                    maxWidth={2}
+                    lineHeight={1.2}
+                    textAlign="center"
+                    anchorX="center"
+                    anchorY="middle"
+                >
+                    Mon Portfolio
+                </Text>
+
+                {/* Affichage des projets en cercle autour du centre */}
+                {projects.map((project, index) => {
+                    const angle = (index / projects.length) * Math.PI * 2;
+                    const radius = 1.5;
+                    const x = Math.sin(angle) * radius;
+                    const z = Math.cos(angle) * radius;
+
+                    return (
+                        <SimplePortfolioItem
+                            key={project.id}
+                            project={{
+                                ...project,
+                                position: [x, 0.5, z]
+                            }}
+                            time={time}
+                        />
+                    );
+                })}
+            </group>
+        );
+    }
+
+    // Mode non-AR (mode test sur desktop)
     return (
         <group>
             {/* Sol pour aider à l'orientation */}
@@ -60,7 +105,7 @@ const SimplePortfolio3D = () => {
                 receiveShadow
             >
                 <planeGeometry args={[10, 10]} />
-                <meshStandardMaterial color="#e0e0e0" transparent opacity={isPresenting ? 0.2 : 0.5} />
+                <meshStandardMaterial color="#e0e0e0" transparent opacity={0.5} />
             </mesh>
 
             {/* Texte d'introduction */}
@@ -72,7 +117,7 @@ const SimplePortfolio3D = () => {
                 lineHeight={1.2}
                 textAlign="center"
             >
-                {isPresenting ? "Regardez autour de vous!" : "Mon Portfolio"}
+                Mon Portfolio
             </Text>
 
             {/* Affichage des projets */}

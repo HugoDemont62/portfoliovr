@@ -1,15 +1,17 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useThree } from '@react-three/fiber';
+import { XR } from '@react-three/xr';
 
 // Contexte XR simplifié
 interface XRContextValue {
     isPresenting: boolean;
+    hasAR: boolean;
     enterAR: () => void;
     exitAR: () => void;
 }
 
 const XRContext = createContext<XRContextValue>({
     isPresenting: false,
+    hasAR: false,
     enterAR: () => {},
     exitAR: () => {},
 });
@@ -35,7 +37,7 @@ export const SimplifiedARButton: React.FC<SimplifiedARButtonProps> = ({
                                                                           children,
                                                                           onStart
                                                                       }) => {
-    const { enterAR } = useXR();
+    const { enterAR, hasAR } = useXR();
 
     const handleClick = () => {
         enterAR();
@@ -46,8 +48,10 @@ export const SimplifiedARButton: React.FC<SimplifiedARButtonProps> = ({
         <button
             className={className}
             onClick={handleClick}
+            disabled={!hasAR}
         >
             {children}
+            {!hasAR && <span className="block text-sm mt-2 text-yellow-500">WebXR non disponible sur cet appareil</span>}
         </button>
     );
 };
@@ -55,25 +59,40 @@ export const SimplifiedARButton: React.FC<SimplifiedARButtonProps> = ({
 // Composant pour activer la réalité augmentée
 export const SimplifiedXR: React.FC<SimplifiedXRProps> = ({ children }) => {
     const [isPresenting, setIsPresenting] = useState(false);
-    const { camera } = useThree();
+    const [hasAR, setHasAR] = useState(false);
 
-    // Simuler l'entrée en mode AR
+    // Vérifier la disponibilité de WebXR AR au chargement
+    useEffect(() => {
+        const checkARSupport = async () => {
+            const nav = navigator as Navigator & { xr?: { isSessionSupported: (mode: string) => Promise<boolean> } };
+            if (nav.xr) {
+                try {
+                    const isSupported = await nav.xr.isSessionSupported('immersive-ar');
+                    setHasAR(isSupported);
+                    console.log("Support AR détecté:", isSupported);
+                } catch (error) {
+                    console.error("Erreur lors de la vérification AR:", error);
+                    setHasAR(false);
+                }
+            } else {
+                console.log("WebXR n'est pas disponible sur ce navigateur");
+                setHasAR(false);
+            }
+        };
+
+        checkARSupport();
+    }, []);
+
+    // Entrer en mode AR
     const enterAR = () => {
-        console.log("Entrée en mode AR simulée");
+        console.log("Tentative d'entrée en mode AR");
         setIsPresenting(true);
-
-        // Modifications à la caméra pour simuler l'AR
-        camera.position.set(0, 1.6, 0);
-        // Ici, dans une vraie implémentation, nous initialiserions WebXR
     };
 
-    // Simuler la sortie du mode AR
+    // Sortir du mode AR
     const exitAR = () => {
-        console.log("Sortie du mode AR simulée");
+        console.log("Sortie du mode AR");
         setIsPresenting(false);
-
-        // Remise à l'état initial
-        camera.position.set(0, 1.6, 3);
     };
 
     // Nettoyer à la sortie
@@ -83,10 +102,23 @@ export const SimplifiedXR: React.FC<SimplifiedXRProps> = ({ children }) => {
         };
     }, [isPresenting]);
 
-    // Fournir le contexte XR
+    // Fournir le contexte XR avec les vraies fonctionnalités AR
     return (
-        <XRContext.Provider value={{ isPresenting, enterAR, exitAR }}>
-            {children}
+        <XRContext.Provider value={{ isPresenting, hasAR, enterAR, exitAR }}>
+            <XR
+                onSessionStart={() => setIsPresenting(true)}
+                onSessionEnd={() => setIsPresenting(false)}
+            >
+                {children}
+            </XR>
         </XRContext.Provider>
     );
 };
+
+// Ajout des propriétés manquantes au type XRProperties
+declare module '@react-three/xr' {
+    interface XRProperties {
+        onSessionStart?: () => void;
+        onSessionEnd?: () => void;
+    }
+}
